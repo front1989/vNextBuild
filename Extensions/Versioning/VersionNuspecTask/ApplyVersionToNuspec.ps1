@@ -13,20 +13,19 @@
 # Enable -Verbose option
 [CmdletBinding()]
 param (
-
-    [Parameter(Mandatory)]
-    [String]$Path,
-
-    [Parameter(Mandatory)]
-    [string]$VersionNumber,
-
-    $VersionRegex,
-
-    $outputversion
 )
 
 # Set a flag to force verbose as a default
 $VerbosePreference ='Continue' # equiv to -verbose
+
+# use the new API to set the variables
+$Path = Get-VstsInput -Name "Path"
+$VersionNumber = Get-VstsInput -Name "VersionNumber"
+$InjectVersion = Get-VstsInput -Name "InjectVersion"
+$VersionRegex = Get-VstsInput -Name "VersionRegex"
+$outputversion = Get-VstsInput -Name "outputversion"
+$filename = Get-VstsInput -Name "Filename"
+
 
 # Make sure path to source code directory is available
 if (-not (Test-Path $Path))
@@ -35,33 +34,39 @@ if (-not (Test-Path $Path))
     exit 1
 }
 Write-Verbose "Source Directory: $Path"
+Write-Verbose "Filename: $filename"
 Write-Verbose "Version Number/Build Number: $VersionNumber"
 Write-Verbose "Version Filter: $VersionRegex"
+Write-Verbose "Inject Version: $InjectVersion"
+
 Write-verbose "Output: Version Number Parameter Name: $outputversion"
 
 # Get and validate the version data
-$VersionData = [regex]::matches($VersionNumber,$VersionRegex)
-switch($VersionData.Count)
-{
-   0        
-      { 
-         Write-Error "Could not find version number data in $VersionNumber."
-         exit 1
-      }
-   1 {}
-   default 
-      { 
-         Write-Warning "Found more than instance of version data in $VersionNumber." 
-         Write-Warning "Will assume first instance is version."
-      }
+if ([System.Convert]::ToBoolean($InjectVersion) -eq $true) {
+    Write-Verbose "Using the version number directly"
+    $NewVersion = $VersionNumber
+} else {
+    $VersionData = [regex]::matches($VersionNumber,$VersionRegex)
+    switch($VersionData.Count)
+    {
+    0        
+        { 
+            Write-Error "Could not find version number data in $VersionNumber."
+            exit 1
+        }
+    1 {}
+    default 
+        { 
+            Write-Warning "Found more than instance of version data in $VersionNumber." 
+            Write-Warning "Will assume first instance is version."
+        }
+    }
+    $NewVersion = $VersionData[0]
 }
-$NewVersion = $VersionData[0]
 Write-Verbose "Version: $NewVersion"
 
 # Apply the version to the assembly property files
-$files = gci $Path -recurse | 
-    ?{ $_.PSIsContainer } | 
-    foreach { gci -Path $_.FullName -Recurse -include *.nuspec }
+$files = Get-ChildItem $Path -recurse -include $filename 
 if($files)
 {
     Write-Verbose "Will apply $NewVersion to $($files.count) files."

@@ -1,3 +1,8 @@
+# THIS PROJECT IS NOT UNDER ACTIVE DEVELOPMENT 
+**As discussed in [this blog post](https://blogs.blackmarble.co.uk/rfennell/2020/05/03/announcing-the-deprecation-of-my-azure-devops-pester-extension-as-it-has-been-migrated-to-the-pester-project-and-republished-under-a-new-id/) this extension has been deprecated and it codebase migrated to a new home under the [Pester Project](https://github.com/pester/AzureDevOpsExtension). Please swap to using the new [updated cross-platform version of this extension](https://marketplace.visualstudio.com/items?itemName=Pester.PesterRunner) now published by the Pester Project**
+
+<hr>
+
 A task to install and run PowerShell Pester based tests
 The task takes five parameters
 
@@ -50,3 +55,6 @@ Releases
 - 8.6.x - Fixed the installation of Pester from the PSGallery to use the first available PS Repository so it handles situations where only a private repository is available. [Fixes #366](https://github.com/rfennell/vNextBuild/issues/366)
 - 8.7.x - Fixed the installation of Pester to use whatever repository has the latest version available. This handles situations where the first private repository available doesn't have Pester or has an older version of Pester. [Fixes #366 Comment](https://github.com/rfennell/vNextBuild/issues/366#issuecomment-420618766)
 - 8.8.x - Add ScriptBlock parameter to allow running a script before running the tests. [Fixes #377](https://github.com/rfennell/vNextBuild/issues/377)
+- 8.11.x - Fixing Find-Module issues raised in [#412](https://github.com/rfennell/AzurePipelines/issues/412) and [415](https://github.com/rfennell/AzurePipelines/issues/415) by adding a check for AllowPrerelease switch on the cmdlet. If it's not available we'll fall back to the version of Pester that is shipped with the extension and write a warning that a newer version can't be used without a newer version of PowerShellGet being available.
+- 8.12.x - Updating built in version of Pester to 4.6.0. Remove check for AllowPrerelease as it's not needed. Fixes [#421](https://github.com/rfennell/AzurePipelines/issues/421)
+- 8.13.x - Update to better support offline build machines with no nuget installed. Falls back to shipped version of Pester. Fixes [#447](https://github.com/rfennell/AzurePipelines/issues/447)

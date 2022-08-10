@@ -1,7 +1,7 @@
 import fs = require("fs");
 import path = require("path");
 import xpath = require("xpath");
-import xmldom = require("xmldom");
+import xmldom = require("@xmldom/xmldom");
 
 function escapeRegExp(str) {
   return str.replace(/[\-\[\]\/\{\}\(\)\+\?\.\\\^\$\|]/g, "\\$&");
@@ -23,8 +23,14 @@ export function processFiles (filename: string, recurse: string, xpathQuery: str
 
   files.forEach(file => {
       let rawContent = fs.readFileSync(file).toString();
-      let document = processFile(xpathQuery, file, rawContent, value, attribute, logInfo);
-      fs.writeFileSync(file, document);
+      const includesCrLf = rawContent.includes("\r\n");
+      let document = processXMLString(xpathQuery, file, rawContent, value, attribute, logInfo);
+      if (includesCrLf) {
+        // fix the line endings
+        fs.writeFileSync(file, document.toString().replace(/\n/gm, "\r\n"));
+      } else {
+        fs.writeFileSync(file, document.toString());
+      }
   });
 }
 
@@ -54,7 +60,7 @@ export function findFiles (dir, filenamePattern, recurse, filelist): any {
   return filelist;
 }
 
-export function processFile(xpathQuery, file, rawContent, value, attribute, logFunction): any {
+export function processXMLString(xpathQuery, file, rawContent, value, attribute, logFunction) {
   const dom = xmldom.DOMParser;
 
   let document = new dom().parseFromString(rawContent);
@@ -66,7 +72,10 @@ export function processFile(xpathQuery, file, rawContent, value, attribute, logF
           xmlNode.singleNodeValue.textContent = value;
           logFunction(`Updated the file [${file}] with the new value [${xpathQuery}] with the value [${value}]`);
       } else {
-          xmlNode.singleNodeValue.attributes.getNamedItem(attribute).textContent = value;
+          // Previously call this, but Typescript won't compile, so need to use any type
+          // xmlNode.singleNodeValue.attributes.getNamedItem(attribute).textContent = value;
+          let node: any = xmlNode.singleNodeValue;
+          node.attributes.getNamedItem(attribute).textContent = value;
           logFunction(`Updated the file [${file}] with the new value [${xpathQuery}] with the attribute [${attribute}=${value}]`);
       }
   }

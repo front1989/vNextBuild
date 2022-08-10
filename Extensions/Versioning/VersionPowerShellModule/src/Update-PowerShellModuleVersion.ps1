@@ -19,51 +19,57 @@
 #>
 [cmdletbinding()]
 param (
-
-    [Parameter(Mandatory)]
-    [String]$Path,
-
-    [Parameter(Mandatory)]
-    [string]$VersionNumber,
-
-    [string]$OutputVersion
-
 )
 
-try {
-    Write-Verbose -Message "Validating version number - $VersionNumber"
-    $null = [Version]::Parse($VersionNumber)
-}
-catch {
-    Write-Error -Message "Invalid version number format. Please check the supplied number and try again"
-    exit 1
-}
+# use the new API to set the variables
+$Path = Get-VstsInput -Name "Path"
+$VersionNumber = Get-VstsInput -Name "VersionNumber"
+$InjectVersion = Get-VstsInput -Name "InjectVersion"
+$VersionRegex = Get-VstsInput -Name "VersionRegex"
+$outputversion = Get-VstsInput -Name "outputversion"
 
-Write-Verbose -Message "Loading Configuration module for applying the version number"
-if (Get-Module -Name PowerShellGet -ListAvailable) {
+$VersionNumber,$Prerelease = $VersionNumber -split '-' -replace '"' -replace "'"
+# Get and validate the version data
+if ([System.Convert]::ToBoolean($InjectVersion) -eq $true) {
+    Write-Verbose "Using the version number directly"
+    # First the old check
     try {
-        Write-Verbose -Message "Attempting to use already configured NuGet provider"
-        $null = Get-PackageProvider -Name NuGet -ErrorAction Stop
+        Write-Verbose -Message "Validating version number - $VersionNumber"
+        $null = [Version]::Parse($VersionNumber)
     }
     catch {
-        Write-Verbose -Message "No NuGet provider found, installing it first"
-        Install-PackageProvider -Name Nuget -RequiredVersion 2.8.5.201 -Scope CurrentUser -Force -Confirm:$false
+        Write-Error -Message "Invalid version number format. Please check the supplied number and try again"
+        exit 1
     }
+} else {
+    Write-Verbose "Extracting version number from build number"
+    $VersionData = [regex]::matches($VersionNumber,$VersionRegex)
 
-    Write-Verbose -Message "Finding the latest version of the Configuration module on the PSGallery"
-    $NewestPester = Find-Module -Name Configuration -Repository PSGallery
-    If (-not(Get-Module Configuration) -or (Get-Module Configuration -ListAvailable | Sort-Object Version -Descending| Select-Object -First 1).Version -lt $NewestPester.Version) {
-        Write-Verbose -Message "Newer version of the module is available online, installing as current user"
-        Install-Module -Name Configuration -Scope CurrentUser -Force -Repository PSGallery
-        Import-Module Configuration -force
-        $Null = Get-Command -Module Configuration
+    switch($VersionData.Count)
+    {
+    0
+        {
+            Write-Error "Could not find version number data in $VersionNumber."
+            exit 1
+        }
+    1 {}
+    default
+        {
+            Write-Warning "Found more than instance of version data in $VersionNumber."
+            Write-Warning "Will assume first instance is version."
+        }
     }
+    $VersionNumber = $VersionData[0].Value
 }
-else {
-    Write-Verbose -Message "PowerShellGet is unavailable, using Configuration module shipped with task instead"
-    Import-Module "$PSScriptRoot\1.3.0\Configuration.psd1" -force
-    $Null = Get-Command -Module Configuration
+if ($Prerelease) {
+    Write-Verbose -Message "Found prerelease flag: $Prerelease"
 }
+
+Write-Verbose -Message "Update the PSModulePath and load the Configuration 1.5.0 module that is shipped with this task"
+$Env:PSModulePath = "$PSScriptRoot;$Env:PSModulePath"
+Write-Verbose -Message "Loading Configuration module shipped with tasks"
+Import-Module "$PSScriptRoot\Configuration\1.5.0\Configuration.psd1" -force
+$Null = Get-Command -Module Configuration
 
 Write-Verbose -Message "Finding all the module psd1 files in the specified path"
 $ModuleFiles = Get-ChildItem -Path $Path -Filter *.psd1 -Recurse |
@@ -76,6 +82,18 @@ Foreach ($Module in $ModuleFiles)
 {
     Write-Verbose -Message "Updating version for $($Module.split('\')[-1]) at path $Module"
     Update-Metadata -Path $Module -PropertyName ModuleVersion -Value $VersionNumber
+
+    if ($null -ne (Get-Metadata -Path $Module -PropertyName PrivateData.PSData.Prerelease -ErrorAction SilentlyContinue)) {
+        if ($Prerelease) {
+            Write-Verbose "Update Manifest at $Module with Prerelease: $Prerelease"
+            Update-Metadata -Path $Module -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
+        } else {
+            Update-Metadata -Path $Module -PropertyName PrivateData.PSData.Prerelease -Value ""
+        }
+    } elseif($Prerelease) {
+        Write-Warning ("Cannot set Prerelease in module manifest. Add an empty Prerelease to your module manifest, like:`n" +
+                       '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
+    }
 }
 Write-Verbose "Set the output variable '$outputversion' with the value $VersionNumber"
 Write-Host "##vso[task.setvariable variable=$outputversion;]$VersionNumber"

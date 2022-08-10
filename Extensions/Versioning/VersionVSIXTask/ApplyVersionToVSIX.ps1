@@ -14,27 +14,20 @@
 # Enable -Verbose option
 [CmdletBinding()]
 param (
-
-    [Parameter(Mandatory)]
-    [String]$Path,
-
-    [Parameter(Mandatory)]
-    [string]$VersionNumber,
-
-    [Parameter(Mandatory)]
-    [string]$UseRegex,
-
-    [Parameter(Mandatory)]
-    [string]$DigitMode,
-
-    $VersionRegex ,
-
-    $outputversion
 )
 
 
 # Set a flag to force verbose as a default
 $VerbosePreference ='Continue' # equiv to -verbose
+
+# use the new API to set the variables
+$Path = Get-VstsInput -Name "Path"
+$VersionNumber = Get-VstsInput -Name "VersionNumber"
+$UseRegex = Get-VstsInput -Name "UseRegex"
+$DigitMode = Get-VstsInput -Name "DigitMode"
+$VersionRegex = Get-VstsInput -Name "VersionRegex"
+$outputversion = Get-VstsInput -Name "outputversion"
+
 
 # Make sure path to source code directory is available
 if (-not (Test-Path $Path))
@@ -47,7 +40,7 @@ Write-Verbose "Version Number/Build Number: $VersionNumber"
 Write-Verbose "Version Filter: $VersionRegex"
 Write-verbose "Output: Version Number Parameter Name: $outputversion"
 
-if ($UseRegex -eq $true)
+if ([System.Convert]::ToBoolean($UseRegex) -eq $true) 
 {
     Write-Verbose "Processing provided version number with regex"
     # Get and validate the version data
@@ -79,7 +72,7 @@ if ($UseRegex -eq $true)
         $NewVersion = [String]::Format("{0}.{1}", $parts[0], $parts[1])
     }
 } else {
-    Write-Verbose "Using provided version number with reformating"
+    Write-Verbose "Using provided version number without reformating"
     $NewVersion = $VersionNumber
 }
 

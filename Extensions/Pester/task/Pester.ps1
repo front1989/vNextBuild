@@ -41,6 +41,7 @@ param
     [string]$ScriptBlock
 )
 
+Write-Host "##vso[task.logissue type=warning]This version of the Pester task runner is now deprecated. Please install the latest version from the Pester publisher for newer features and future support. https://marketplace.visualstudio.com/items?itemName=Pester.PesterRunner"
 Import-Module -Name "$PSScriptRoot\HelperModule.psm1" -Force
 
 if ($run32Bit -eq $true -and $env:Processor_Architecture -ne "x86") {
@@ -61,6 +62,8 @@ if ($run32Bit -eq $true -and $env:Processor_Architecture -ne "x86") {
     &"$env:windir\syswow64\windowspowershell\v1.0\powershell.exe" -noprofile -executionpolicy bypass -file $myinvocation.Mycommand.path $args
     exit
 }
+Write-Host "This task has been deprecated, please consider swapping to its cross-platform replacement published by the Pester Project https://marketplace.visualstudio.com/items?itemName=Pester.PesterRunner"
+
 Write-Host "Running in $($env:Processor_Architecture) PowerShell"
 
 if ($PSBoundParameters.ContainsKey('additionalModulePath')) {
@@ -68,21 +71,36 @@ if ($PSBoundParameters.ContainsKey('additionalModulePath')) {
     $env:PSModulePath = $additionalModulePath + ';' + $env:PSModulePath
 }
 
-if ((Get-Module -Name PowerShellGet -ListAvailable) -and (Get-Command Install-Module).Parameters.ContainsKey('SkipPublisherCheck')) {
+if ((Get-Module -Name PowerShellGet -ListAvailable) -and
+    (Get-Command Install-Module).Parameters.ContainsKey('SkipPublisherCheck')) {
+
     try {
         $null = Get-PackageProvider -Name NuGet -ErrorAction Stop
     }
     catch {
-        Install-PackageProvider -Name Nuget -RequiredVersion 2.8.5.201 -Scope CurrentUser -Force -Confirm:$false
+        try {
+            Install-PackageProvider -Name Nuget -RequiredVersion 2.8.5.201 -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
+        }
+        catch {
+            Write-Host "##vos[task.logissue type=warning]Falling back to version of Pester shipped with extension. To use a newer version please update the version of PowerShellGet available on this machine."
+            Import-Module "$PSScriptRoot\4.6.0\Pester.psd1" -force
+        }
     }
     $NewestPester = Find-Module -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
     If ((Get-Module Pester -ListAvailable | Sort-Object Version -Descending| Select-Object -First 1).Version -lt $NewestPester.Version) {
-        Install-Module -Name Pester -Scope CurrentUser -Force -Repository $NewestPester.Repository -SkipPublisherCheck
+        try {
+            Install-Module -Name Pester -Scope CurrentUser -Force -Repository $NewestPester.Repository -SkipPublisherCheck -MaximumVersion 4.99.99 -ErrorAction Stop
+        }
+        catch {
+            Write-Host "##vos[task.logissue type=warning]There was an issue downloading a new version of Pester so falling back to version of Pester shipped with extension."
+            Import-Module "$PSScriptRoot\4.6.0\Pester.psd1" -force
+        }
     }
     Import-Module -Name Pester
 }
 else {
-    Import-Module "$PSScriptRoot\4.3.1\Pester.psd1" -force
+    Write-Host "##vos[task.logissue type=warning]Falling back to version of Pester shipped with extension. To use a newer version please update the version of PowerShellGet available on this machine."
+    Import-Module "$PSScriptRoot\4.6.0\Pester.psd1" -force
 }
 
 $Parameters = @{

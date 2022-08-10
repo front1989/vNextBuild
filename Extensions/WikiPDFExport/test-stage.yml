@@ -1,0 +1,92 @@
+parameters:
+- name: localpath
+  type: string
+  default: $(Agent.TempDirectory) 
+
+steps:
+- checkout: VSTSBuildTaskValidation
+  clean: false
+  fetchDepth: 0
+  lfs: false
+
+- task: UseDotNet@2
+  displayName: 'Use .NET Core runtime'
+  inputs:
+    packageType: 'runtime'
+    version: '6.0.x'
+    includePreviewVersions: false
+- task: richardfennellBM.BM-VSTS-XplatGenerateReleaseNotes-DEV1.XplatGenerate-Release-Notes.XplatGenerateReleaseNotes@2
+  displayName: 'Generate Release Notes based on Release Comparision API'
+  inputs:
+    outputfile: '$(System.DefaultWorkingDirectory)/inline.md'
+    outputVariableName: OutputText
+    templateLocation: InLine
+    inlinetemplate: |
+      # Release notes
+      **Build Number**  : ${buildDetails.buildNumber}
+      **Build started** : ${buildDetails.startTime}
+      **Source Branch** : ${buildDetails.sourceBranch}
+
+      ### Associated work items
+      @@WILOOP@@
+      * ** ${widetail.fields['System.WorkItemType']} ${widetail.id} ** Assigned by: ${widetail.fields['System.AssignedTo']}  ${widetail.fields['System.Title']}
+      @@WILOOP@@
+
+      ### Associated commits
+      @@CSLOOP@@
+      * **ID ${csdetail.commitId} ** ${csdetail.comment}
+      @@CSLOOP@@
+- task: richardfennellBM.BM-VSTS-WikiPDFExport-Tasks-DEV.WikiPDFExportTask.WikiPdfExportTask@2
+  displayName: 'Export Single File'
+  inputs:
+    cloneRepo: false
+    usePreRelease: false
+    localpath: '$(System.DefaultWorkingDirectory)'
+    singleFile: 'inline.md'
+    outputFile: '$(Build.ArtifactStagingDirectory)/PDF/$(Agent.OS)-singleFile.pdf'
+    downloadPath: '${{parameters.localpath}}'
+- task: richardfennellBM.BM-VSTS-WikiPDFExport-Tasks-DEV.WikiPDFExportTask.WikiPdfExportTask@2
+  displayName: 'Export Public GitHub WIKI'
+  condition: succeededOrFailed()
+  inputs:
+    cloneRepo: true
+    repo: 'https://github.com/rfennell/AzurePipelines.wiki.git'
+    useAgentToken: false
+    localpath: '$(System.DefaultWorkingDirectory)/GitHubRepo'
+    outputFile: '$(Build.ArtifactStagingDirectory)/PDF/$(Agent.OS)-publicGitHub.pdf'
+    downloadPath: '${{parameters.localpath}}'
+- task: richardfennellBM.BM-VSTS-WikiPDFExport-Tasks-DEV.WikiPDFExportTask.WikiPdfExportTask@2
+  displayName: 'Export Azure DevOps WIKI'
+  condition: succeededOrFailed()
+  inputs:
+    cloneRepo: true
+    repo: 'https://dev.azure.com/richardfennell/GitHub/_git/GitHub.wiki'
+    useAgentToken: true
+    outputFile: '$(Build.ArtifactStagingDirectory)/PDF/$(Agent.OS)-Azrepo.pdf'
+    downloadPath: '${{parameters.localpath}}'
+- task: richardfennellBM.BM-VSTS-WikiPDFExport-Tasks-DEV.WikiPDFExportTask.WikiPdfExportTask@2
+  displayName: 'Export part of the Azure DevOps WIKI'
+  condition: succeededOrFailed()
+  inputs:
+    cloneRepo: true
+    repo: 'https://dev.azure.com/richardfennell/GitHub/_git/GitHub.wiki'
+    useAgentToken: true
+    outputFile: '$(Build.ArtifactStagingDirectory)/PDF/$(Agent.OS)-AzrepoFilter.pdf'
+    localpath: '$(System.DefaultWorkingDirectory)/repopartial'
+    rootExportPath: '$(System.DefaultWorkingDirectory)/repopartial/folder'
+    downloadPath: '${{parameters.localpath}}'
+- task: richardfennellBM.BM-VSTS-WikiPDFExport-Tasks-DEV.WikiPDFExportTask.WikiPdfExportTask@2
+  displayName: 'Export Azure DevOps WIKI without downloading tool'
+  condition: and(succeededOrFailed(), eq(variables['AGENT.OS'], 'Windows_NT'))
+  inputs:
+    cloneRepo: true
+    overrideExePath: '$(System.DefaultWorkingDirectory)/tools/azuredevops-export-wiki.exe'
+    repo: 'https://dev.azure.com/richardfennell/GitHub/_git/GitHub.wiki'
+    useAgentToken: true
+    outputFile: '$(Build.ArtifactStagingDirectory)/PDF/$(Agent.OS)-Azrepo-nodownload.pdf'
+    downloadPath: '${{parameters.localpath}}'
+- task: PublishPipelineArtifact@0
+  condition: succeededOrFailed()
+  inputs:
+    artifactName: '$(Agent.OS)-PDFs'
+    targetPath: '$(Build.ArtifactStagingDirectory)/PDF'

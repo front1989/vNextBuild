@@ -229,10 +229,11 @@ Describe "Testing Pester Task" {
         Mock Write-Warning { }
         Mock Get-PSRepository {[PSCustomObject]@{Name = 'PSGallery'}}
         Mock Write-Error { }
-        Mock Get-Command { [PsCustomObject]@{Parameters=@{SkipPublisherCheck='SomeValue'}}}
+        Mock Get-Command { [PsCustomObject]@{Parameters=@{SkipPublisherCheck='SomeValue'}}} -ParameterFilter {$Name -eq 'Install-Module'}
+        Mock Get-Command { [PsCustomObject]@{Parameters=@{AllowPrerelease='SomeValue'}}} -ParameterFilter {$Name -eq 'Find-Module'}
 
         it "Installs the latest version of Pester when on PS5+ and PowerShellGet is available" {
-            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.3.1") }
+            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.6.0") }
             Mock Get-ChildItem  { return $true }
             Mock Find-Module { [PsCustomObject]@{Version=[version]::new(9,9,9);Repository='PSGallery'}}
             Mock Get-PackageProvider { $True }
@@ -243,7 +244,7 @@ Describe "Testing Pester Task" {
             Assert-MockCalled Invoke-Pester
         }
         it "Installs the latest version of Pester from PSGallery when multiple repositories are available" {
-            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.3.1") }
+            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.6.0") }
             Mock Get-ChildItem  { return $true }
             Mock Find-Module { @(
                     [PsCustomObject]@{Version=[version]::new(4,3,0);Repository='OtherRepository'}
@@ -258,7 +259,7 @@ Describe "Testing Pester Task" {
             Assert-MockCalled Invoke-Pester
         }
         it "Installs the required version of NuGet provider when PowerShellGet is available and NuGet isn't already installed" {
-            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.3.1") }
+            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.6.0") }
             Mock Get-ChildItem  { return $true }
             Mock Find-Module { [PsCustomObject]@{Version=[version]::new(9,9,9);Repository='PSGallery'}}
             Mock Get-PackageProvider { throw }
@@ -272,7 +273,7 @@ Describe "Testing Pester Task" {
         }
 
         it "Should not install a new version of Pester when the latest is already installed" {
-            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.3.1") }
+            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.6.0") }
             Mock Get-ChildItem  { return $true }
             Mock Find-Module { [PsCustomObject]@{Version=(Get-Module Pester).Version;Repository='PSGallery'}}
             Mock Get-PackageProvider { $True }
@@ -284,16 +285,16 @@ Describe "Testing Pester Task" {
         }
 
         it "Should not Install the latest version of Pester when on PowerShellGet is available but SkipPublisherCheck is not available" {
-            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.3.1") }
+            Mock Test-Path { return $true } -ParameterFilter { $Path.EndsWith("\4.6.0") }
             Mock Get-ChildItem  { return $true }
             Mock Find-Module { [PsCustomObject]@{Version=[version]::new(9,9,9);Repository='PSGallery'}}
             Mock Get-PackageProvider { $True }
-            Mock Get-Command { [PsCustomObject]@{Parameters=@{OtherProperty='SomeValue'}} }
+            Mock Get-Command { [PsCustomObject]@{Parameters=@{OtherProperty='SomeValue'}} } -ParameterFilter {$Name -eq 'Install-Module'}
 
             &$sut -ScriptFolder TestDrive:\ -ResultsFile TestDrive:\output.xml
 
             Assert-MockCalled Install-Module -Times 0 -Scope It
-            Assert-MockCalled Import-Module -Times 1 -ParameterFilter {$Name -like '*\4.3.1\Pester.psd1'}
+            Assert-MockCalled Import-Module -Times 1 -ParameterFilter {$Name -like '*\4.6.0\Pester.psd1'}
             Assert-MockCalled Invoke-Pester
             Assert-MockCalled Write-Warning -Times 0 -ParameterFilter {$Message -eq "Code coverage output not supported on Pester versions before 4.0.4."}
         }
@@ -306,7 +307,7 @@ Describe "Testing Pester Task" {
             mock Get-Module { }
 
             &$sut -ScriptFolder TestDrive:\ -ResultsFile TestDrive:\output.xml
-            Assert-MockCalled  Import-Module -ParameterFilter { $Name -eq "$pwd\4.3.1\Pester.psd1" }
+            Assert-MockCalled  Import-Module -ParameterFilter { $Name -eq "$pwd\4.6.0\Pester.psd1" }
             Assert-MockCalled Invoke-Pester
         }#>
     }

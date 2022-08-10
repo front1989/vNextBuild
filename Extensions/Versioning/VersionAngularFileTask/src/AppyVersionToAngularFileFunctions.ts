@@ -1,11 +1,15 @@
 import fs = require("fs");
 import path = require("path");
+import tl = require("azure-pipelines-task-lib/task");
 
-export function getSplitVersionParts (buildNumberFormat, outputFormat, version) {
-    const versionNumberSplitItems = version.split(extractDelimitersRegex(buildNumberFormat));
-    const versionNumberMatches = outputFormat.match(/\d/g);
-    const joinChar =  extractJoinChar(outputFormat);
-    const versionName = (versionNumberMatches.map((item) => versionNumberSplitItems[item - 1])).join(joinChar);
+export function getSplitVersionParts (injectversion, buildNumberFormat, outputFormat, version) {
+    var versionName = version;
+    if (injectversion === false) {
+        const versionNumberSplitItems = version.split(extractDelimitersRegex(buildNumberFormat));
+        const versionNumberMatches = outputFormat.match(/\d/g);
+        const joinChar =  extractJoinChar(outputFormat);
+        versionName = (versionNumberMatches.map((item) => versionNumberSplitItems[item - 1])).join(joinChar);
+    }
     return versionName;
 }
 
@@ -16,6 +20,36 @@ function extractJoinChar(format) {
     } else {
         return "";
     }
+}
+
+export function extractVersion(injectversion, versionRegex, versionNumber ) {
+    var newVersion = versionNumber;
+    if (injectversion === false) {
+        console.log(`Extracting version number from build number`);
+        var regexp = new RegExp(versionRegex);
+        var versionData = regexp.exec(versionNumber);
+        if (!versionData) {
+            // extra check as we don't get zero size array but a null
+            tl.error(`Could not find version number data in ${versionNumber} that matches ${versionRegex}.`);
+            process.exit(1);
+        }
+        switch (versionData.length) {
+        case 0:
+                // this is trapped by the null check above
+                tl.error(`Could not find version number data in ${versionNumber} that matches ${versionRegex}.`);
+                process.exit(1);
+        case 1:
+                break;
+        default:
+                tl.warning(`Found more than instance of version data in ${versionNumber}  that matches ${versionRegex}.`);
+                tl.warning(`Will assume first instance is version.`);
+                break;
+        }
+        newVersion = versionData[0];
+    } else {
+        console.log(`Using provided version number directly`);
+    }
+    return newVersion;
 }
 
 function extractDelimitersRegex(format) {
@@ -34,8 +68,13 @@ export function findFiles (dir, filename , filelist) {
         filelist = findFiles(path.join(dir, file), filename, filelist);
       }
       else {
+        // we now also support regex, on the regex we add a $ to terminate the query
         if (file.toLowerCase().endsWith(filename.toLowerCase())) {
-          filelist.push(path.join(dir, file));
+            console.log (`Added file ${file} via .endswith`);
+            filelist.push(path.join(dir, file));
+        } else if (file.toLowerCase().match(`${filename.toLowerCase()}$`)) {
+            console.log (`Added file ${file} via regex`);
+            filelist.push(path.join(dir, file));
         }
       }
     });
@@ -63,7 +102,7 @@ export function ProcessFile(file, field, newVersion) {
     } else {
         if (field && field.length > 0) {
             console.log (`Updating the field '${field}' version`);
-            const versionRegex = `(${field}:.*')(.*)(')`;
+            const versionRegex = `(${field}:.*["'])(.*)(["'])`;
             var regexp = new RegExp(versionRegex, "gmi");
             let content: string = filecontent.toString();
             let matches;

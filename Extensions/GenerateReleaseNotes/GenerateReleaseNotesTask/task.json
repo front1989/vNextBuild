@@ -1,10 +1,10 @@
 {
   "id": "661BC005-61BE-430F-B994-065BF08C0F39",
   "name": "GenerateReleaseNotes",
-  "friendlyName": "Generate Release Notes",
-  "description": "Generates a release notes file in a format of your choice",
+  "friendlyName": "(deprecated) Generate Release Notes for Pipeline Builds or Releases (PowerShell)",
+  "description": "(deprecated) Task is now deprecated. Please consider my Cross Platform Version https://marketplace.visualstudio.com/items?itemName=richardfennellBM.BM-VSTS-XplatGenerateReleaseNotes ",
     "helpMarkDown": "Version: #{Build.BuildNumber}#. [More Information](https://github.com/rfennell/vNextBuild/wiki/GenerateReleaseNotes%20-Tasks/)",
-
+  "deprecated": true,
   "category": "Utility",
   "visibility": [
                 "Build"
@@ -104,6 +104,15 @@
       "groupName": "advanced"
     },
     {
+      "name": "generateForOnlyTriggerArtifact",
+      "type": "boolean",
+      "label": "Generate for only the trigger artifact",
+      "defaultValue": "False",
+      "required": true,
+      "helpMarkDown": "If true will generate release notes for the trigger build artifact (Release usage only)",
+      "groupName": "advanced"
+    },
+    {
       "name": "generateForCurrentRelease",
       "type": "boolean",
       "label": "Generate for only this Release",
@@ -177,7 +186,7 @@
       "helpMarkDown": "A comma-separated list of Work Item states to include in the report.",
       "groupName": "advanced",
       "visibleRule": "showParents = true"
-    }    ,
+    },
     {
       "name": "unifiedList",
       "type": "boolean",
@@ -186,11 +195,20 @@
       "required": false,
       "helpMarkDown": "A boolean flag whether when running inside a release the WI/Commit for all builds are returned as a single list",
       "groupName": "advanced"
-     }
+     },
+     {
+      "name": "buildTags",
+      "type": "string",
+      "label": "Include only the builds with tags:",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "A comma-separated list of build tags.",
+      "groupName": "advanced"
+    }
   ],
-  "instanceNameFormat": "Generate release notes",
+  "instanceNameFormat": "Generate release notes (PowerShell)",
   "execution": {
-    "PowerShell": {
+    "PowerShell3": {
       "target": "$(currentDirectory)\\GenerateReleaseNotes.ps1",
       "argumentFormat": "",
       "workingDirectory": "$(currentDirectory)"

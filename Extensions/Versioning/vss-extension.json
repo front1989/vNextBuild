@@ -5,6 +5,10 @@
  "name": "Manifest Versioning Build Tasks",
  "publisher": "richardfennellBM",
   "description": "Applies a version to various formats of manifest files based on the build number.",
+  "CustomerQnASupport": {
+    "enableqna":"true",
+    "url": "https://github.com/rfennell/AzurePipelines/issues"
+  },
  "categories": [
     "Build and release"
   ],
@@ -94,6 +98,9 @@
     },
     {
       "path": "VersionAngularFileTask/task"
+    },
+    {
+      "path": "VersionIOSPlistManifest/task"
     }
   ],
   "contributions": [
@@ -215,6 +222,16 @@
       ],
       "properties": {
         "name": "VersionAngularFileTask/task"
+      }
+    },
+    {
+      "id": "Version-IOSPlistManifest-Task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": [
+        "ms.vss-distributed-task.tasks"
+      ],
+      "properties": {
+        "name": "VersionIOSPlistManifest/task"
       }
     }
 

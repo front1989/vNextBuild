@@ -45,11 +45,20 @@
          "helpMarkDown": "Version number to apply to files, can be extraced from the build name 'Build HelloWorld_00.00.00000.0' format"
       },
       {
+        "name": "InjectVersion",
+        "type": "boolean",
+        "label": "Inject Version",
+        "defaultValue": "False",
+        "required": true,
+        "helpMarkDown": "If True no regex processing will be done to the build number.",
+        "groupName":"advanced"
+      },
+      {
       "name": "VersionRegex",
       "type": "string",
       "label": "Regex Filter to extract build number",
       "defaultValue": "\\d+\\.\\d+\\.\\d+\\.\\d+",
-      "required": true,
+      "required": false,
       "helpMarkDown": "Regular expression filter to get build number from the build name.",
       "groupName":"advanced"
     },
@@ -80,12 +89,12 @@
       "helpMarkDown": "The actual version number extracted and used from the build number.",
       "groupName":"output"
     }
-      
+
    ],
   "minimumAgentVersion": "1.82.0",
    "instanceNameFormat": "Version Assemblies",
   "execution": {
-    "PowerShell": {
+    "PowerShell3": {
       "target": "$(currentDirectory)\\ApplyVersionToAssemblies.ps1",
       "argumentFormat": "",
       "workingDirectory": "$(currentDirectory)"

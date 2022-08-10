@@ -55,7 +55,7 @@
       {
         "name": "useBuildNumberDirectly",
         "type": "boolean",
-        "label": "Use Version Number without processing",
+        "label": "Inject Version",
         "defaultValue": "False",
         "required": true,
         "helpMarkDown": "Use the version number parameter without any further processing",
@@ -88,7 +88,7 @@
       "label": "Filename Pattern",
       "defaultValue": "package.json",
       "required": true,
-      "helpMarkDown": "The filename pattern to update.",
+      "helpMarkDown": "The filename pattern to update. Can be in the simple form 'package.json' or regex such as '^package\\.json'",
       "groupName":"advanced"
     },
      {
@@ -109,12 +109,12 @@
       "helpMarkDown": "The actual version number extracted and used from the build number.",
       "groupName":"output"
     }
-      
+
    ],
   "minimumAgentVersion": "1.82.0",
    "instanceNameFormat": "Version JSON File",
   "execution": {
-     "Node": {
+     "Node10": {
        "target": "ApplyVersionToJSONFile.js",
        "argumentFormat": ""
      }
